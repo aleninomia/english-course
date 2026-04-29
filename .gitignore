@@ -1,0 +1,26 @@
+```
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.xcuserstate
+project.xcworkspace/xcshareddata/xcschemes_*.xcscheme
+xcuserdata/
+
+# Build
+build/
+DerivedData/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Dependencies
+Pods/
+Carthage/
+```
