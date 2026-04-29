@@ -76,7 +76,7 @@ EnglishCourseApp/
 
 ### Passo a Passo
 
-1. **Abrir o Projeto no Xcode**
+1. **Abrir os fontes em um projeto iOS**
    ```bash
    cd EnglishCourseApp
    open EnglishCourseApp.xcodeproj

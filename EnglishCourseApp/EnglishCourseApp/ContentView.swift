@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     var body: some View {
@@ -78,19 +79,31 @@ struct ContentView: View {
 struct LessonView: View {
     let title: String
     let lessons: [String]
+    @State private var completedLessons: Set<String> = []
     
     var body: some View {
         List(lessons, id: \.self) { lesson in
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(lesson)
                     .font(.headline)
                 Text("Toque para iniciar a lição")
                     .font(.caption)
                     .foregroundColor(.gray)
+                Button(completedLessons.contains(lesson) ? "ConcluÃ­da" : "Marcar como concluÃ­da") {
+                    completeLesson(lesson)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(completedLessons.contains(lesson))
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
         }
         .navigationTitle(title)
+    }
+
+    private func completeLesson(_ lesson: String) {
+        guard !completedLessons.contains(lesson) else { return }
+        completedLessons.insert(lesson)
+        ProgressManager.shared.addXP(10, type: .lesson)
     }
 }
 
@@ -230,6 +243,7 @@ struct PronunciationPracticeView: View {
     @StateObject private var speechRecognizer = SpeechRecognizer()
     @State private var selectedPhrase = ""
     @State private var showingPermissionAlert = false
+    @State private var awardedXPForCurrentAttempt = false
     
     let practicePhrases = [
         "Hello",
@@ -255,9 +269,10 @@ struct PronunciationPracticeView: View {
                 
                 // Phrase Selection
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 12) {
-                    ForEach(practicePhrases, id: \\.self) { phrase in
+                    ForEach(practicePhrases, id: \.self) { phrase in
                         Button(action: {
                             selectedPhrase = phrase
+                            awardedXPForCurrentAttempt = false
                             speechRecognizer.reset()
                         }) {
                             Text(phrase)
@@ -391,6 +406,11 @@ struct PronunciationPracticeView: View {
         .onAppear {
             checkPermissions()
         }
+        .onChange(of: speechRecognizer.isRecording) { isRecording in
+            if !isRecording {
+                awardPronunciationXPIfNeeded()
+            }
+        }
         .alert("Permissão de Microfone Necessária", isPresented: $showingPermissionAlert) {
             Button("Abrir Configurações", action: openSettings)
             Button("Cancelar", role: .cancel) {}
@@ -406,6 +426,7 @@ struct PronunciationPracticeView: View {
             Task {
                 let authorized = await SpeechRecognizer.requestAuthorization()
                 if authorized {
+                    awardedXPForCurrentAttempt = false
                     speechRecognizer.startRecording(expectedPhrase: selectedPhrase)
                 } else {
                     showingPermissionAlert = true
@@ -437,6 +458,14 @@ struct PronunciationPracticeView: View {
         } else {
             return .orange
         }
+    }
+
+    private func awardPronunciationXPIfNeeded() {
+        guard !awardedXPForCurrentAttempt else { return }
+        guard !selectedPhrase.isEmpty, !speechRecognizer.transcript.isEmpty else { return }
+
+        awardedXPForCurrentAttempt = true
+        ProgressManager.shared.addXP(5, type: .pronunciation)
     }
 }
 
@@ -598,7 +627,7 @@ struct FlashcardView: View {
                             .foregroundColor(.gray)
                         
                         HStack(spacing: 12) {
-                            ForEach([FlashcardManager.Rating.again, .hard, .good, .easy], id: \\.self) { rating in
+                            ForEach([FlashcardManager.Rating.again, .hard, .good, .easy], id: \.self) { rating in
                                 Button(action: {
                                     flashcardManager.rateCard(rating)
                                 }) {
@@ -872,7 +901,7 @@ struct ProgressView: View {
                 .font(.headline)
             
             HStack(alignment: .bottom, spacing: 8) {
-                ForEach(progressManager.getLast7DaysXP(), id: \\.day) { dayData in
+                ForEach(progressManager.getLast7DaysXP(), id: \.day) { dayData in
                     VStack {
                         Spacer()
                         RoundedRectangle(cornerRadius: 4)
@@ -999,12 +1028,6 @@ struct BadgeCard: View {
         formatter.dateStyle = .short
         return formatter.string(from: date)
     }
-}
-
-struct Question {
-    let question: String
-    let options: [String]
-    let correct: Int
 }
 
 #Preview {

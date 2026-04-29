@@ -7,8 +7,6 @@ build/
 *.dSYM
 
 # Xcode
-*.xcodeproj/
-*.xcworkspace/
 *.xcuserstate
 project.xcworkspace/
 xcuserdata/
