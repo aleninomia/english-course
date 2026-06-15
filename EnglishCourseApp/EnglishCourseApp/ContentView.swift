@@ -56,6 +56,9 @@ struct ContentView: View {
                     NavigationLink(destination: QuizView()) {
                         Label("Quiz", systemImage: "questionmark.circle")
                     }
+                    NavigationLink(destination: LyricsView()) {
+                        Label("Letras de Música", systemImage: "music.note.list")
+                    }
                     NavigationLink(destination: PronunciationPracticeView()) {
                         Label("Pronúncia", systemImage: "mic.fill")
                     }
@@ -89,7 +92,18 @@ struct LessonView: View {
                 Text("Toque para iniciar a lição")
                     .font(.caption)
                     .foregroundColor(.gray)
-                Button(completedLessons.contains(lesson) ? "ConcluÃ­da" : "Marcar como concluÃ­da") {
+                
+                // Show lyrics button for songs
+                if lesson.hasPrefix("Song:") {
+                    Button(action: {
+                        // Could navigate to a lyrics view here
+                    }) {
+                        Label("Ver Letra", systemImage: "music.note")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                
+                Button(completedLessons.contains(lesson) ? "Concluída" : "Marcar como concluída") {
                     completeLesson(lesson)
                 }
                 .buttonStyle(.borderedProminent)
@@ -473,6 +487,149 @@ struct Question {
     let question: String
     let options: [String]
     let correct: Int
+}
+
+// MARK: - Lyrics View
+struct LyricsView: View {
+    @State private var selectedSong = ""
+    @State private var showLyrics = false
+    @State private var currentLyrics = ""
+    
+    let songs = [
+        "Hello - Adele",
+        "Yesterday - The Beatles",
+        "Imagine - John Lennon",
+        "Let It Be - The Beatles",
+        "Someone Like You - Adele",
+        "Perfect - Ed Sheeran"
+    ]
+    
+    let lyricsDB: [String: String] = [
+        "Hello - Adele": """
+            Hello, it's me
+            I was wondering if after all these years you'd like to meet
+            To go over everything
+            They say that time's supposed to heal ya
+            But I ain't done much healing
+            
+            Hello, can you hear me?
+            I'm in California dreaming about who we used to be
+            When we were younger and free
+            I've forgotten how it felt before the world fell at our feet
+            """,
+        "Yesterday - The Beatles": """
+            Yesterday, all my troubles seemed so far away
+            Now it looks as though they're here to stay
+            Oh, I believe in yesterday
+            
+            Suddenly, I'm not half the man I used to be
+            There's a shadow hanging over me
+            Oh, yesterday came suddenly
+            """,
+        "Imagine - John Lennon": """
+            Imagine there's no heaven
+            It's easy if you try
+            No hell below us
+            Above us only sky
+            Imagine all the people living for today
+            
+            Imagine there's no countries
+            It isn't hard to do
+            Nothing to kill or die for
+            And no religion too
+            Imagine all the people living life in peace
+            """,
+        "Let It Be - The Beatles": """
+            When I find myself in times of trouble
+            Mother Mary comes to me
+            Speaking words of wisdom, let it be
+            And in my hour of darkness
+            She is standing right in front of me
+            Speaking words of wisdom, let it be
+            
+            Let it be, let it be
+            Let it be, let it be
+            Whisper words of wisdom, let it be
+            """,
+        "Someone Like You - Adele": """
+            I heard that you're settled down
+            That you found a girl and you're married now
+            I heard that your dreams came true
+            Guess she gave you things I didn't give to you
+            
+            Never mind, I'll find someone like you
+            I wish nothing but the best for you, too
+            Don't forget me, I beg
+            I remember you said
+            Sometimes it lasts in love, but sometimes it hurts instead
+            """,
+        "Perfect - Ed Sheeran": """
+            I found a love for me
+            Darling, just dive right in and follow my lead
+            Well, I found a girl, beautiful and sweet
+            Oh, I never knew you were the someone waiting for me
+            
+            'Cause we were just kids when we fell in love
+            Not knowing what it was
+            I will not give you up this time
+            Darling, just kiss me slow, your heart is all I own
+            And in your eyes, you're holding mine
+            """
+    ]
+    
+    var body: some View {
+        NavigationView {
+            List(songs, id: \\.self) { song in
+                Button(action: {
+                    selectedSong = song
+                    currentLyrics = lyricsDB[song] ?? "Letra não disponível"
+                    showLyrics = true
+                }) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(song)
+                            .font(.headline)
+                        Text("Toque para ver a letra")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .navigationTitle("Letras de Música")
+            .sheet(isPresented: $showLyrics) {
+                lyricsSheet
+            }
+        }
+    }
+    
+    var lyricsSheet: some View {
+        VStack(spacing: 20) {
+            Text(selectedSong)
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            ScrollView {
+                Text(currentLyrics)
+                    .font(.body)
+                    .lineSpacing(4)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            Button(action: {
+                showLyrics = false
+            }) {
+                Text("Fechar")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
+            .padding()
+        }
+        .padding()
+    }
 }
 
 // MARK: - Flashcard View
