@@ -1,32 +1,48 @@
 ```
 # Build artifacts
-DerivedData/
-build/
-*.app
-*.ipa
-*.dSYM
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
 
 # Xcode
-*.xcuserstate
-project.xcworkspace/
-xcuserdata/
+*.xcodeproj/
+*.xcworkspace/
+*.xcuserdatad/
+*.xcscheme/
+*.app
 
-# Swift Package Manager
-.swiftpm/
-Package.resolved
+# Swift
+*.swiftmodule
+*.swiftdoc
+*.swiftdeps
 
-# Temporary files
-*.tmp
+# Dependencies
+Pods/
+Carthage/
+.build/
+
+# Logs
 *.log
-.DS_Store
-Thumbs.db
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# IDE
+# Editor
 .vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
 ```
