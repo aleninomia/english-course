@@ -27,9 +27,9 @@ class SpeechRecognizer: NSObject, ObservableObject {
     }
     
     private func setupRecognizer() {
-        // Verifica se o reconhecedor está disponível para português e inglês
+        // Verifica se o reconhecedor está disponível para o locale do dispositivo
         if SFSpeechRecognizer.hasRequiredAuthorizations() {
-            recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+            recognizer = SFSpeechRecognizer(locale: Locale.current)
         }
     }
     
@@ -63,7 +63,11 @@ class SpeechRecognizer: NSObject, ObservableObject {
         request = SFSpeechAudioBufferRecognitionRequest()
         
         guard let recognitionRequest = request else {
-            fatalError("Unable to create recognition request")
+            DispatchQueue.main.async {
+                self.feedbackMessage = "Erro ao criar requisição de reconhecimento"
+                self.isRecording = false
+            }
+            return
         }
         
         recognitionRequest.shouldReportPartialResults = true
@@ -180,15 +184,18 @@ class SpeechRecognizer: NSObject, ObservableObject {
         }
     }
     
-    /// Calcula a distância de Levenshtein entre duas strings
+    /// Calcula a distância de Levenshtein entre duas strings (com normalização de acentos)
     private func levenshteinDistance(from source: String, to target: String) -> Int {
-        let empty = Array(repeating: 0, count: target.count + 1)
-        var last = Array(0...target.count)
+        let normalizedSource = normalizeString(source)
+        let normalizedTarget = normalizeString(target)
         
-        for (i, sourceChar) in source.enumerated() {
+        let empty = Array(repeating: 0, count: normalizedTarget.count + 1)
+        var last = Array(0...normalizedTarget.count)
+        
+        for (i, sourceChar) in normalizedSource.enumerated() {
             var current = [i + 1] + empty
             
-            for (j, targetChar) in target.enumerated() {
+            for (j, targetChar) in normalizedTarget.enumerated() {
                 let cost = sourceChar == targetChar ? 0 : 1
                 current[j + 1] = min(
                     current[j] + 1,      // Deleção
@@ -201,6 +208,11 @@ class SpeechRecognizer: NSObject, ObservableObject {
         }
         
         return last.last ?? 0
+    }
+    
+    /// Normaliza string removendo acentos/diacríticos para comparação
+    private func normalizeString(_ string: String) -> String {
+        return string.folding(options: .diacriticInsensitive, locale: .current)
     }
     
     /// Limpa os dados atuais

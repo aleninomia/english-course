@@ -22,6 +22,7 @@ struct Flashcard: Codable, Identifiable {
     var lastReviewed: Date?
     var nextReviewDate: Date?
     var interval: Int = 0 // dias até próxima revisão
+    var easeFactor: Double = 2.5 // Fator de facilidade SM-2 (mínimo 1.3)
     
     enum Difficulty: String, Codable {
         case easy = "Fácil"
@@ -125,31 +126,51 @@ class FlashcardManager: ObservableObject {
             sessionStats.correctCount += 1
         }
         
-        // Calcular próximo intervalo baseado no algoritmo SM-2 simplificado
+        // Calcular próximo intervalo baseado no algoritmo SM-2 correto
+        // Referência: https://www.supermemo.com/en/archives1990-2015/english/ol/sm2
         switch rating {
         case .again:
+            // Qualidade 0: reset completo
             card.interval = 0
+            card.easeFactor = max(1.3, card.easeFactor - 0.2)
             card.nextReviewDate = Date()
             card.difficulty = .hard
+            
         case .hard:
-            card.interval = max(1, card.interval / 2)
-            card.nextReviewDate = Calendar.current.date(byAdding: .day, value: card.interval, to: Date())
-            card.difficulty = .medium
-        case .good:
-            if card.interval == 0 {
+            // Qualidade 1: difícil
+            if card.reviewCount == 1 {
                 card.interval = 1
             } else {
-                card.interval = Int(Double(card.interval) * 2.5)
+                card.interval = max(1, Int(Double(card.interval) * 1.2))
             }
-            card.nextReviewDate = Calendar.current.date(byAdding: .day, value: card.interval, to: Date())
-            card.difficulty = .easy
-        case .easy:
-            if card.interval == 0 {
-                card.interval = 4
+            card.easeFactor = max(1.3, card.easeFactor - 0.15)
+            card.nextReviewDate = Calendar(identifier: .gregorian).date(byAdding: .day, value: card.interval, to: Date())
+            card.difficulty = .medium
+            
+        case .good:
+            // Qualidade 2: bom
+            if card.reviewCount == 1 {
+                card.interval = 1
+            } else if card.reviewCount == 2 {
+                card.interval = 6
             } else {
-                card.interval = Int(Double(card.interval) * 3.0)
+                card.interval = Int(Double(card.interval) * card.easeFactor)
             }
-            card.nextReviewDate = Calendar.current.date(byAdding: .day, value: card.interval, to: Date())
+            // EF não muda para quality 2
+            card.nextReviewDate = Calendar(identifier: .gregorian).date(byAdding: .day, value: card.interval, to: Date())
+            card.difficulty = .easy
+            
+        case .easy:
+            // Qualidade 3: fácil
+            if card.reviewCount == 1 {
+                card.interval = 1
+            } else if card.reviewCount == 2 {
+                card.interval = 6
+            } else {
+                card.interval = Int(Double(card.interval) * card.easeFactor * 1.3)
+            }
+            card.easeFactor = card.easeFactor + 0.15
+            card.nextReviewDate = Calendar(identifier: .gregorian).date(byAdding: .day, value: card.interval, to: Date())
             card.difficulty = .easy
         }
         

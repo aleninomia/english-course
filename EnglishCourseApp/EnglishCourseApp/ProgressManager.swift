@@ -25,8 +25,8 @@ struct UserProgress: Codable {
     var achievements: [Achievement] = []
     
     mutating func updateStreak() {
-        let calendar = Calendar.current
-        let today = Date()
+        let calendar = Calendar(identifier: .gregorian)
+        let today = startOfDay(for: Date())
         let todayString = formatDate(today)
         
         if lastStudyDate == nil {
@@ -37,25 +37,25 @@ struct UserProgress: Codable {
             return
         }
         
-        if let lastDate = formatDate(lastStudyDate!) {
-            if let lastStudyDateObj = parseDate(lastDate) {
-                let daysDiff = calendar.dateComponents([.day], from: lastStudyDateObj, to: today).day ?? 0
-                
-                if daysDiff == 0 {
-                    // Mesmo dia, não faz nada
-                    return
-                } else if daysDiff == 1 {
-                    // Dia consecutivo
-                    currentStreak += 1
-                    lastStudyDate = todayString
-                    updateLongestStreak()
-                    addStudyDay(date: today, xp: 0)
-                } else if daysDiff > 1 {
-                    // Quebrou o streak
-                    currentStreak = 1
-                    lastStudyDate = todayString
-                    addStudyDay(date: today, xp: 0)
-                }
+        if let lastDateString = lastStudyDate,
+           let lastStudyDateObj = parseDate(lastDateString) {
+            let lastDay = startOfDay(for: lastStudyDateObj)
+            let daysDiff = calendar.dateComponents([.day], from: lastDay, to: today).day ?? 0
+            
+            if daysDiff == 0 {
+                // Mesmo dia, não faz nada
+                return
+            } else if daysDiff == 1 {
+                // Dia consecutivo
+                currentStreak += 1
+                lastStudyDate = todayString
+                updateLongestStreak()
+                addStudyDay(date: today, xp: 0)
+            } else if daysDiff > 1 {
+                // Quebrou o streak
+                currentStreak = 1
+                lastStudyDate = todayString
+                addStudyDay(date: today, xp: 0)
             }
         }
     }
@@ -100,20 +100,21 @@ struct UserProgress: Codable {
     
     mutating func checkAchievements() {
         let newAchievements = [
-            Achievement(id: "first_lesson", name: "Primeiros Passos", description: "Complete sua primeira lição", condition: { $0.lessonsCompleted >= 1 }, earned: false),
-            Achievement(id: "week_streak", name: "Dedicado", description: "7 dias consecutivos", condition: { $0.currentStreak >= 7 }, earned: false),
-            Achievement(id: "month_streak", name: "Comprometido", description: "30 dias consecutivos", condition: { $0.currentStreak >= 30 }, earned: false),
-            Achievement(id: "quiz_master", name: "Mestre do Quiz", description: "Complete 10 quizzes", condition: { $0.quizzesCompleted >= 10 }, earned: false),
-            Achievement(id: "vocab_builder", name: "Construtor de Vocabulário", description: "Revise 50 flashcards", condition: { $0.flashcardsReviewed >= 50 }, earned: false),
-            Achievement(id: "pronunciation_pro", name: "Pronúncia Perfeita", description: "Pratique pronúncia 20 vezes", condition: { $0.pronunciationPractices >= 20 }, earned: false),
-            Achievement(id: "level_5", name: "Intermediário", description: "Alcance o nível 5", condition: { $0.level >= 5 }, earned: false),
-            Achievement(id: "level_10", name: "Avançado", description: "Alcance o nível 10", condition: { $0.level >= 10 }, earned: false),
-            Achievement(id: "xp_1000", name: "Mil XP", description: "Ganhe 1000 XP totais", condition: { $0.totalXP >= 1000 }, earned: false)
+            Achievement(id: "first_lesson", name: "Primeiros Passos", description: "Complete sua primeira lição", earned: false, earnedDate: nil),
+            Achievement(id: "week_streak", name: "Dedicado", description: "7 dias consecutivos", earned: false, earnedDate: nil),
+            Achievement(id: "month_streak", name: "Comprometido", description: "30 dias consecutivos", earned: false, earnedDate: nil),
+            Achievement(id: "quiz_master", name: "Mestre do Quiz", description: "Complete 10 quizzes", earned: false, earnedDate: nil),
+            Achievement(id: "vocab_builder", name: "Construtor de Vocabulário", description: "Revise 50 flashcards", earned: false, earnedDate: nil),
+            Achievement(id: "pronunciation_pro", name: "Pronúncia Perfeita", description: "Pratique pronúncia 20 vezes", earned: false, earnedDate: nil),
+            Achievement(id: "level_5", name: "Intermediário", description: "Alcance o nível 5", earned: false, earnedDate: nil),
+            Achievement(id: "level_10", name: "Avançado", description: "Alcance o nível 10", earned: false, earnedDate: nil),
+            Achievement(id: "xp_1000", name: "Mil XP", description: "Ganhe 1000 XP totais", earned: false, earnedDate: nil)
         ]
         
         for achievement in newAchievements {
-            if !achievements.contains(where: { $0.id == achievement.id }) && achievement.condition(self) {
-                achievements.append(Achievement(id: achievement.id, name: achievement.name, description: achievement.description, condition: achievement.condition, earned: true, earnedDate: Date()))
+            let conditionMet = checkAchievementCondition(achievement.id)
+            if !achievements.contains(where: { $0.id == achievement.id }) && conditionMet {
+                achievements.append(Achievement(id: achievement.id, name: achievement.name, description: achievement.description, earned: true, earnedDate: Date()))
                 
                 // Adicionar badge correspondente
                 let badge = Badge(id: achievement.id, name: achievement.name, description: achievement.description, icon: getBadgeIcon(for: achievement.id), earnedDate: Date())
@@ -121,6 +122,21 @@ struct UserProgress: Codable {
                     badges.append(badge)
                 }
             }
+        }
+    }
+    
+    private func checkAchievementCondition(_ id: String) -> Bool {
+        switch id {
+        case "first_lesson": return lessonsCompleted >= 1
+        case "week_streak": return currentStreak >= 7
+        case "month_streak": return currentStreak >= 30
+        case "quiz_master": return quizzesCompleted >= 10
+        case "vocab_builder": return flashcardsReviewed >= 50
+        case "pronunciation_pro": return pronunciationPractices >= 20
+        case "level_5": return level >= 5
+        case "level_10": return level >= 10
+        case "xp_1000": return totalXP >= 1000
+        default: return false
         }
     }
     
@@ -141,13 +157,21 @@ struct UserProgress: Codable {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: date)
     }
     
     private func parseDate(_ string: String) -> Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.date(from: string)
+    }
+    
+    /// Retorna o início do dia (00:00) em UTC para comparação consistente
+    private func startOfDay(for date: Date) -> Date {
+        let calendar = Calendar(identifier: .gregorian)
+        return calendar.startOfDay(for: date)
     }
 }
 
@@ -169,13 +193,11 @@ struct Achievement: Codable, Identifiable {
     var id: String
     var name: String
     var description: String
-    var condition: ((UserProgress) -> Bool)?
     var earned: Bool = false
     var earnedDate: Date?
     
     enum CodingKeys: String, CodingKey {
         case id, name, description, earned, earnedDate
-        // condition não é codificável
     }
 }
 
@@ -231,10 +253,28 @@ class ProgressManager: ObservableObject {
     }
     
     func getLast7DaysXP() -> [(day: String, xp: Int)] {
-        let calendar = Calendar.current
+        let calendar = Calendar(identifier: .gregorian)
         var result: [(String, Int)] = []
         
         for i in (0..<7).reversed() {
+            if let date = calendar.date(byAdding: .day, value: -i, to: Date()) {
+                let dayString = progress.formatDate(date)
+                if let studyDay = progress.studyHistory.first(where: { $0.date == dayString }) {
+                    result.append((progress.formatDateShort(date), studyDay.xp))
+                } else {
+                    result.append((progress.formatDateShort(date), 0))
+                }
+            }
+        }
+        
+        return result
+    }
+    
+    func getLast30DaysXP() -> [(day: String, xp: Int)] {
+        let calendar = Calendar(identifier: .gregorian)
+        var result: [(String, Int)] = []
+        
+        for i in (0..<30).reversed() {
             if let date = calendar.date(byAdding: .day, value: -i, to: Date()) {
                 let dayString = progress.formatDate(date)
                 if let studyDay = progress.studyHistory.first(where: { $0.date == dayString }) {
